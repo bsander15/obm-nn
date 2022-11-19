@@ -2,11 +2,13 @@ import numpy as np
 
 gMission_edges = "gMissionDataset/edges.txt"
 
-class gMission:
+
+class GMission:
     """
     Class for loading gMission dataset in its entirety. We use this class to generate new instances of the OLBM problem
     for training.
     """
+
     def __init__(self):
         """
         The gMission class contains three member variables: workers, tasks, and costs. Instances of the OLBM problem
@@ -14,31 +16,32 @@ class gMission:
         """
         self.workers, self.tasks, self.costs = self._load()
 
-    def _load(self):
+    @staticmethod
+    def _load():
         """
         :return (workers, tasks, cost) - workers is a set of all the workers, while tasks is a set
         of all tasks. The Costs is a worker by task cost array where the [worker][task]th item is
         the expected value of matching the worker to a task.
         """
         f_edges = open(gMission_edges, "r")
-        edgeWeights = dict()
+        edge_weights = dict()
         for line in f_edges:
             vals = line.split(",")
-            edgeWeights[vals[0]] = vals[1].strip()
-        w = np.array(list(edgeWeights.values()), dtype="float")
+            edge_weights[vals[0]] = vals[1].strip()
+        w = np.array(list(edge_weights.values()), dtype="float")
         max_w = max(w)
-        edges = {k: (float(v) / float(max_w)) for k, v in edgeWeights.items()}
+        edges = {k: (float(v) / float(max_w)) for k, v in edge_weights.items()}
         workers = np.array(list(set([int(float(key.split(";")[0])) for key in edges])))
         tasks = np.array(list(set([int(float(key.split(";")[1])) for key in edges])))
-        cost = np.zeros((max(workers)+1, max(tasks)+1))
-        for k,v in edges.items():
-            i,j = k.split(";")
+        cost = np.zeros((max(workers) + 1, max(tasks) + 1))
+        for k, v in edges.items():
+            i, j = k.split(";")
             i = int(float(i))
             j = int(float(j))
             cost[i][j] = v
-        return workers,tasks,cost
+        return workers, tasks, cost
 
-    def generate_OLBM_instance(self, num_tasks=50, num_workers = 50, random_seed=1234):
+    def generate_olbm_instance(self, num_tasks=50, num_workers=50, random_seed=1234):
         """
         Generate a training instance of the OLBM problem. This consists of 1) a list of tasks that are known at the
         beginning of the problem, 2) a list of workers that will be presented in sequence to the model that is
@@ -56,7 +59,7 @@ class gMission:
         random_workers = self._random_sample_of_workers(num_workers)
 
         # Get the edges matching the workers to those tasks
-        edges = self.costs[random_workers]
+        edges = self.costs[random_workers, :][:, random_tasks]
 
         # Create a new OLBMInstance from the above:
         return OLBMInstance(random_tasks, random_workers, edges)
@@ -68,16 +71,14 @@ class gMission:
         return self.workers[np.random.choice(len(self.workers), size=num_workers, replace=False)]
 
 
-
-
 class OLBMInstance:
     def __init__(self, tasks, workers, costs):
-        self.tasks = tasks
-        self.workers = workers
+        self.tasks = np.array([i for i in range(len(tasks))])
+        self.workers = np.array([i for i in range(len(workers))])
         self.costs = costs
         self.step = 0  # increment that keeps track of where we are in the problem, i.e. which worker to present next
         self.matchings = {}  # Dict to keep track of which tasks have been matched with which worker
-        self.matched_bitmap = np.ones_like(self.workers)  # Bitmap indicating which tasks have been
+        self.matched_bitmap = np.ones_like(self.tasks)  # Bitmap indicating which tasks have been
 
     def has_unseen_workers(self):
         return self.step < len(self.workers)
@@ -88,7 +89,7 @@ class OLBMInstance:
             self.step += 1
             return worker_to_return
 
-    def get_next_NN_input(self):
+    def get_next_nn_input(self):
         worker = self.get_next_worker()
         worker_edges = self.costs[worker]
         return np.concatenate((worker_edges, self.matched_bitmap))
@@ -106,7 +107,18 @@ class OLBMInstance:
 
 # Test code to allow us to debug the above class:
 if __name__ == '__main__':
-    a = gMission()
+    a = GMission()
 
-    instance_for_OLBM = a.generate_OLBM_instance()
+    olbm_problem = a.generate_olbm_instance()
+    matchings = olbm_problem.get_matchings()
+    bitmap = olbm_problem.get_matched_bitmap()
+    unseen_workers = olbm_problem.has_unseen_workers()
+    next_worker = olbm_problem.get_next_worker()
+    next_nn_input = olbm_problem.get_next_nn_input()
+
+    olbm_problem.match(olbm_problem.tasks[0], 0)
+    matchings = olbm_problem.get_matchings()
+    bitmap = olbm_problem.get_matched_bitmap()
+
+    print("Test Finished")
 
