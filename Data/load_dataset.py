@@ -74,7 +74,7 @@ class OLBMInstance:
     def __init__(self, tasks, workers, costs):
         self.tasks = np.array([i for i in range(len(tasks))])
         self.workers = np.array([i for i in range(len(workers))])
-        self.costs = costs
+        self.costs = costs  # Weight matrix describing edges linking workers -> tasks. Rows are workers. Cols are tasks.
         self.step = 0  # increment that keeps track of where we are in the problem, i.e. which worker to present next
         self.matchings = {}  # Dict to keep track of which tasks have been matched with which worker
         self.matching_score = 0  # Keep track of value of current assigned matching

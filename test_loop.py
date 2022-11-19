@@ -26,7 +26,6 @@ def main():
             optimal_score += problem_to_solve.get_all_edges()[i, j]
         optimal_scores.append(optimal_score)
 
-
     print(f"Greedy agent mean score: {np.mean(scores)} over {NUM_TESTS_TO_RUN} trials")
     print(f"Mean optimal score: {np.mean(optimal_scores)} over {NUM_TESTS_TO_RUN} trials")
     print(f"Optimality Ratio of Greedy: {np.mean(scores) / np.mean(optimal_scores)} over {NUM_TESTS_TO_RUN} trials")

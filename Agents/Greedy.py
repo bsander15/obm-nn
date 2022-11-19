@@ -33,13 +33,3 @@ class Greedy:
     def solve_olbm(self):
         while self.olbm_problem.has_unseen_workers():
             self.match()
-
-#Brief testing
-# greedy = Greedy(['1','2','3','4'])
-# nodes = {'1n': {'1': 5, '3': 9}, '2n': {'2': 4, '3': 5}, '3n': {'1': 10, '4': 1}, '4n' :{'4': 3}}
-# for node in nodes.keys():
-#     greedy.match(node, nodes[node])
-# print(greedy.get_matches())
-
-
-        
