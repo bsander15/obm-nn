@@ -3,7 +3,7 @@ from scipy.optimize import linear_sum_assignment
 from Data.load_dataset import GMission
 from Agents.Greedy import Greedy
 
-NUM_TESTS_TO_RUN = 5000
+NUM_TESTS_TO_RUN = 500
 
 
 def main():
