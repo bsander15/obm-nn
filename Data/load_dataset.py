@@ -1,6 +1,5 @@
 import numpy as np
-
-gMission_edges = "gMissionDataset/edges.txt"
+gMission_edges = "Data/gMissionDataset/edges.txt"
 
 
 class GMission:
@@ -78,7 +77,8 @@ class OLBMInstance:
         self.costs = costs
         self.step = 0  # increment that keeps track of where we are in the problem, i.e. which worker to present next
         self.matchings = {}  # Dict to keep track of which tasks have been matched with which worker
-        self.matched_bitmap = np.ones_like(self.tasks)  # Bitmap indicating which tasks have been
+        self.matching_score = 0  # Keep track of value of current assigned matching
+        self.matched_bitmap = np.ones_like(self.tasks, dtype=np.int8)  # Bitmap indicating which tasks have been
 
     def has_unseen_workers(self):
         return self.step < len(self.workers)
@@ -100,9 +100,19 @@ class OLBMInstance:
     def get_matched_bitmap(self):
         return self.matched_bitmap
 
+    def get_worker_edges(self, worker):
+        return self.costs[worker]
+
+    def get_matching_score(self):
+        return self.matching_score
+
+    def get_all_edges(self):
+        return self.costs
+
     def match(self, task, worker):
         self.matchings[task] = worker
         self.matched_bitmap[task] = 0
+        self.matching_score += self.costs[worker][task]
 
 
 # Test code to allow us to debug the above class:
@@ -116,7 +126,7 @@ if __name__ == '__main__':
     next_worker = olbm_problem.get_next_worker()
     next_nn_input = olbm_problem.get_next_nn_input()
 
-    olbm_problem.match(olbm_problem.tasks[0], 0)
+    olbm_problem.match(0, 8)
     matchings = olbm_problem.get_matchings()
     bitmap = olbm_problem.get_matched_bitmap()
 
