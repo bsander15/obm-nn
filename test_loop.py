@@ -6,7 +6,7 @@ from Agents.FFNet import LinearFFNet, OLBMReinforceTrainer
 import torch
 from tqdm import tqdm
 
-NUM_TRAINING_ITERATIONS = 20000
+NUM_TRAINING_ITERATIONS = 240000
 NUM_TESTS_TO_RUN = 5000
 NUM_TASKS = 10
 NUM_WORKERS = 60

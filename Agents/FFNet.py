@@ -148,7 +148,11 @@ class OLBMReinforceTrainer:
         for episode in tqdm(range(N)):
             reward = self.train_iteration(problem_generator_seed=episode)
             rolling_avg.append(reward)
-            if episode % 100 == 0:
+            if episode % 1000 == 0:
                 print(f"EPISODE {episode} - SCORE: {reward}")
                 print(f"Rolling average over last {len(rolling_avg)} episodes = {np.mean(rolling_avg)}")
+            if episode % 10000 == 0:
+                # Save a snapshot of the model weights:
+                torch.save(self.model.state_dict(), "./FFNet.pth")
+
 
