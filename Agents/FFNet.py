@@ -15,10 +15,6 @@ class LinearFFNet(nn.Module):
         This is 4 Layer NN that is parameterized with different numbers of inputs (# workers + # tasks in gMission), the
         number of outputs (# tasks + 1, where the extra output indicates that we should skip a worker) and the # of
         nodes we should have in our hidden layers.
-
-        Outputs indicate the likelihood that we should match a worker to the nth node, so to make a decision we just
-        take the argmax of the output and attempt to connect the input worker to the nth task. If that's not possible,
-        I guess we'll skip the node - not entirely clear what to do in that case.
         """
         super(LinearFFNet, self).__init__()
         self.ff = nn.Sequential(
@@ -44,7 +40,9 @@ class LinearFFNet(nn.Module):
         a worker has already been matched to the nth task.
 
         Outputs a chosen action, e.g. a task to match the input worker to, plus the log-probability of taking that
-        action.
+        action. The action is chosen by sampling from all possible actions according the the probability distribution
+        computed over all the actions by the NN - in other words, the network will *typically* take actions that are
+        predicted to be high-value, but in a somewhat stochastic manner to promote exploration of policy space.
 
         This code was partially adapted from Noufal Samsudin's REINFORCE implementation, found at:
         https://github.com/kvsnoufal/reinforce
