@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-import os  # For saving model
+from collections import deque
 import numpy as np
 
 from Data.load_dataset import GMission, OLBMInstance
@@ -122,7 +120,11 @@ class OLBMReinforceTrainer:
         return np.sum(rewards)
 
     def train_N_iterations(self, N=100):
+        rolling_avg = deque(maxlen=100)
         for episode in range(N):
             reward = self.train_iteration(problem_generator_seed=episode)
+            rolling_avg.append(reward)
             if episode % 100 == 0:
                 print(f"EPISODE {episode} - SCORE: {reward}")
+                print(f"Rolling average over last {len(rolling_avg)} episodes = {np.mean(rolling_avg)}")
+
