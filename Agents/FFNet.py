@@ -65,8 +65,7 @@ class OLBMReinforceTrainer:
         self.gamma = gamma
         self.optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
         self.gmission_dataset = GMission()
-        self.all_rewards = []  # TODO: What is this for?
-        self.best_rolling = -99999  # TODO: What is this for?
+        self.all_rewards = []
         self.num_tasks = num_tasks  # Should refactor this to get direct from self.model?
         self.num_workers = num_workers  # Should refactor this to get direct from self.model?
 
