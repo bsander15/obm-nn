@@ -51,6 +51,10 @@ class LinearFFNet(nn.Module):
         https://github.com/kvsnoufal/reinforce
         """
         actions = self.ff(x.float())
+        if np.isnan(actions.squeeze(0).detach().cpu().numpy()).any():
+            # TODO: there is a bug where the weights go to NaN, which results in NaN ouput.
+            # Trying to decrease the learning rate...
+            print("STOP!")
         action = np.random.choice(self.action_space, p=actions.squeeze(0).detach().cpu().numpy())  # TODO: necessary?
         log_prob_action = torch.log(actions.squeeze(0))[action]
         return action, log_prob_action
@@ -68,9 +72,11 @@ class OLBMReinforceTrainer:
         self.num_tasks = num_tasks  # Should refactor this to get direct from self.model?
         self.num_workers = num_workers  # Should refactor this to get direct from self.model?
 
-    def train_iteration(self):
+    def train_iteration(self, problem_generator_seed=1234):
         # Generate an OLBM problem:
-        problem = self.gmission_dataset.generate_olbm_instance(num_tasks=self.num_tasks, num_workers=self.num_workers)
+        problem = self.gmission_dataset.generate_olbm_instance(num_tasks=self.num_tasks,
+                                                               num_workers=self.num_workers,
+                                                               random_seed=problem_generator_seed)
 
         log_probs = []  # vector of log-probabilities
         rewards = []  # vector of rewards
@@ -101,11 +107,14 @@ class OLBMReinforceTrainer:
         discounted_rewards = np.array(discounted_rewards)  # Cast to np.array
 
         # Adjust weights of Policy (NN) by backpropagating error to increase rewards:
-        discounted_rewards = torch.tensor(discounted_rewards, dtype=torch.float32, device=DEVICE)
-        discounted_rewards = (discounted_rewards - torch.mean(discounted_rewards)) / (torch.std(discounted_rewards))
+        _discounted_rewards = torch.tensor(discounted_rewards, dtype=torch.float32, device=DEVICE)
+        discounted_rewards = (_discounted_rewards - torch.mean(_discounted_rewards)) / (torch.std(_discounted_rewards))
         log_prob = torch.stack(log_probs)
 
-        policy_gradient = -log_prob.to(DEVICE) * discounted_rewards
+        if torch.isnan(discounted_rewards).all():
+            policy_gradient = -log_prob.to(DEVICE) * torch.zeros_like(discounted_rewards).to(DEVICE)
+        else:
+            policy_gradient = -log_prob.to(DEVICE) * discounted_rewards
 
         self.model.zero_grad()
         policy_gradient.sum().backward()
@@ -114,6 +123,6 @@ class OLBMReinforceTrainer:
 
     def train_N_iterations(self, N=100):
         for episode in range(N):
-            reward = self.train_iteration()
+            reward = self.train_iteration(problem_generator_seed=episode)
             if episode % 100 == 0:
                 print(f"EPISODE {episode} - SCORE: {reward}")
