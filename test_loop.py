@@ -4,7 +4,7 @@ from Data.load_dataset import GMission
 from Agents.Greedy import Greedy
 from Agents.FFNet import LinearFFNet, OLBMReinforceTrainer
 
-NUM_TRAINING_ITERATIONS = 5000
+NUM_TRAINING_ITERATIONS = 50000
 NUM_TESTS_TO_RUN = 5000
 NUM_TASKS = 10
 NUM_WORKERS = 60

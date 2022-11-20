@@ -50,7 +50,7 @@ class LinearFFNet(nn.Module):
         This code was partially adapted from Noufal Samsudin's REINFORCE implementation, found at:
         https://github.com/kvsnoufal/reinforce
         """
-        actions = self.ff(torch.from_numpy(x).float())
+        actions = self.ff(x.float())
         action = np.random.choice(self.action_space, p=actions.squeeze(0).detach().cpu().numpy())  # TODO: necessary?
         log_prob_action = torch.log(actions.squeeze(0))[action]
         return action, log_prob_action
@@ -58,7 +58,7 @@ class LinearFFNet(nn.Module):
 
 class OLBMReinforceTrainer:
     def __init__(self, model, lr=0.0001, gamma=0.9, num_tasks=10, num_workers=30):
-        self.model = model
+        self.model = model.to(DEVICE)
         self.lr = lr
         self.gamma = gamma
         self.optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
@@ -79,6 +79,7 @@ class OLBMReinforceTrainer:
         # from environment, and action at each step
         while problem.has_unseen_workers():
             worker, state = problem.get_next_nn_input()
+            state = torch.from_numpy(state).to(DEVICE)
             action, log_prob = self.model(state)  # Choose an action based on the model
             reward = problem.match(action, worker)
 
