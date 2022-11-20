@@ -3,7 +3,7 @@ from scipy.optimize import linear_sum_assignment
 from Data.load_dataset import GMission
 from Agents.Greedy import Greedy
 
-NUM_TESTS_TO_RUN = 500
+NUM_TESTS_TO_RUN = 5000
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
 
     for test in range(NUM_TESTS_TO_RUN):
         # Solve the problem using the greedy algorithm:
-        problem_to_solve = data.generate_olbm_instance(random_seed=test)
+        problem_to_solve = data.generate_olbm_instance(num_tasks=10, num_workers=60, random_seed=test)
         greedy_agent = Greedy(problem_to_solve)
         greedy_agent.solve_olbm()
         scores.append(problem_to_solve.get_matching_score())
