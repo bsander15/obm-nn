@@ -90,9 +90,14 @@ class OLBMInstance:
             return worker_to_return
 
     def get_next_nn_input(self):
+        """
+        Get the edge list for the next worker in the sequence and the bitmap representing the unmatched nodes and
+        return them as a concatenated numpy vector representing the state of the problem at a given time-step.
+        Also returns the worker to be matched.
+        """
         worker = self.get_next_worker()
         worker_edges = self.costs[worker]
-        return np.concatenate((worker_edges, self.matched_bitmap))
+        return worker, np.concatenate((worker_edges, self.matched_bitmap))
 
     def get_matchings(self):
         return self.matchings
@@ -110,9 +115,20 @@ class OLBMInstance:
         return self.costs
 
     def match(self, task, worker):
-        self.matchings[task] = worker
-        self.matched_bitmap[task] = 0
-        self.matching_score += self.costs[worker][task]
+        """
+        Attempt to match the input task to the input worker. The method returns the weight of the edge between the two
+        as the "reward" for performing the matching. If there is no edge between the task and the worker, then matchin
+        is not performed in the problem state and a reward of 0 is returned.
+        """
+        reward = 0
+        if task >= len(self.tasks):
+            return reward  # We are choosing to skip this worker in this case
+        if self.costs[worker][task] > 0:  # Need to check if an edge exists, otherwise we can't perform a match
+            self.matchings[task] = worker
+            self.matched_bitmap[task] = 0
+            self.matching_score += self.costs[worker][task]
+            reward = self.costs[worker][task]
+        return reward
 
 
 # Test code to allow us to debug the above class:

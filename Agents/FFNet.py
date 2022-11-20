@@ -5,6 +5,11 @@ import torch.nn.functional as F
 import os  # For saving model
 import numpy as np
 
+from Data.load_dataset import GMission, OLBMInstance
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Automatically set the device for computation
+
+
 class LinearFFNet(nn.Module):
     def __init__(self, input_vector_size, num_tasks, hidden_size=100):
         """
@@ -24,8 +29,11 @@ class LinearFFNet(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, num_tasks + 1)  # n+1st output is a "skip node" indicating we should skip this worker
+            nn.Linear(hidden_size, num_tasks + 1),
+            # n+1st output is a "skip node" indicating we should skip this worker
+            nn.Softmax()
         )
+        self.action_space = np.arange(num_tasks + 1, dtype=np.int16)
 
     def forward(self, x):
         """
@@ -36,54 +44,75 @@ class LinearFFNet(nn.Module):
         where w_n is the weight of the edge from worker_t to node_n and m_n is a binary mask representing whether or not
         a worker has already been matched to the nth task.
 
-        Outputs a vector of probabilities of size U + 1 where the additional action represents skipping this worker.
+        Outputs a chosen action, e.g. a task to match the input worker to, plus the log-probability of taking that
+        action.
+
+        This code was partially adapted from Noufal Samsudin's REINFORCE implementation, found at:
+        https://github.com/kvsnoufal/reinforce
         """
-        return self.ff(x)
+        actions = self.ff(torch.from_numpy(x).float())
+        action = np.random.choice(self.action_space, p=actions.squeeze(0).detach().cpu().numpy())  # TODO: necessary?
+        log_prob_action = torch.log(actions.squeeze(0))[action]
+        return action, log_prob_action
 
 
-class QTrainer:
-    """
-    Class used for training neural network models using Q-Learning.
-
-    QTrainer class adapted from David's old Cribbage project. Code for that project can be found here:
-    https://github.com/yanivam/cribbage-agent-cs5100/blob/main/cribbage/QModel.py
-    """
-    def __init__(self, model, lr, gamma):
+class OLBMReinforceTrainer:
+    def __init__(self, model, lr=0.0001, gamma=0.9, num_tasks=10, num_workers=30):
         self.model = model
         self.lr = lr
         self.gamma = gamma
-        self.optimizer = optim.Adam(model.parameters(), lr=self.lr)
-        self.criterion = nn.MSELoss()
+        self.optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
+        self.gmission_dataset = GMission()
+        self.all_rewards = []  # TODO: What is this for?
+        self.best_rolling = -99999  # TODO: What is this for?
+        self.num_tasks = num_tasks  # Should refactor this to get direct from self.model?
+        self.num_workers = num_workers  # Should refactor this to get direct from self.model?
 
-    def train_step(self, state, action, reward, next_state, done):
-        state = torch.tensor(state, dtype=torch.float)
-        next_state = torch.tensor(next_state, dtype=torch.float)
-        action = torch.tensor(action, dtype=torch.long)
-        reward = torch.tensor(reward, dtype=torch.float)
+    def train_iteration(self):
+        # Generate an OLBM problem:
+        problem = self.gmission_dataset.generate_olbm_instance(num_tasks=self.num_tasks, num_workers=self.num_workers)
 
-        if len(state.shape) == 1:
-            state = torch.unsqueeze(state, 0)
-            next_state = torch.unsqueeze(next_state, 0)
-            action = torch.unsqueeze(action, 0)
-            reward = torch.unsqueeze(reward, 0)
-            done = (done, )
+        log_probs = []  # vector of log-probabilities
+        rewards = []  # vector of rewards
 
-        # Predicted Q-values given input state:
-        pred = self.model(state)
+        # Use policy (neural network) to complete OLBM problem, recording action probabilities from policy, reward
+        # from environment, and action at each step
+        while problem.has_unseen_workers():
+            worker, state = problem.get_next_nn_input()
+            action, log_prob = self.model(state)  # Choose an action based on the model
+            reward = problem.match(action, worker)
 
-        # Target Q-Vals:
-        target = pred.clone()
+            rewards.append(reward)
+            log_probs.append(log_prob)
 
-        for idx in range(len(done)):
-            Q_new = reward[idx]  # The observed reward
-            if not done[idx]:
-                Q_new = reward[idx] + self.gamma * torch.max(self.model(next_state[idx]))  # 1-step Bellman Equation
+        self.all_rewards.append(np.sum(rewards))
 
-            # Update reward:
-            target[idx][action[idx].item()] = Q_new
+        # Calculate discounted rewards for each action
+        discounted_rewards = []
+        for t in range(len(rewards)):
+            Gt = 0
+            exponent = 0
 
-        # Adjust the model so as to minimize difference between the Q-estimates computed above and the actual rewards:
-        self.optimizer.zero_grad()
-        loss = self.criterion(target, pred)
-        loss.backward()
+            for reward in rewards[t:]:
+                Gt = Gt + self.gamma ** exponent * reward  # REINFORCE/Bellman Eqn
+                exponent += 1
+            discounted_rewards.append(Gt)
+        discounted_rewards = np.array(discounted_rewards)  # Cast to np.array
+
+        # Adjust weights of Policy (NN) by backpropagating error to increase rewards:
+        discounted_rewards = torch.tensor(discounted_rewards, dtype=torch.float32, device=DEVICE)
+        discounted_rewards = (discounted_rewards - torch.mean(discounted_rewards)) / (torch.std(discounted_rewards))
+        log_prob = torch.stack(log_probs)
+
+        policy_gradient = -log_prob.to(DEVICE) * discounted_rewards
+
+        self.model.zero_grad()
+        policy_gradient.sum().backward()
         self.optimizer.step()
+        return np.sum(rewards)
+
+    def train_N_iterations(self, N=100):
+        for episode in range(N):
+            reward = self.train_iteration()
+            if episode % 100 == 0:
+                print(f"EPISODE {episode} - SCORE: {reward}")
