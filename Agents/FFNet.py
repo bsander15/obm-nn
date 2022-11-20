@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from collections import deque
 import numpy as np
+from tqdm import tqdm
 
 from Data.load_dataset import GMission, OLBMInstance
 
@@ -108,7 +109,6 @@ class OLBMReinforceTrainer:
 
             # calculate reward for t'th action as reward for t'th action plus sum of future discounted actions:
             for reward in rewards[t:]:
-                # Bellman Eqn:
                 discounted_reward_at_time_t = discounted_reward_at_time_t + self.gamma ** exponent * reward
                 exponent += 1
             discounted_rewards.append(discounted_reward_at_time_t)
@@ -147,7 +147,7 @@ class OLBMReinforceTrainer:
         sampled from GMission.
         """
         rolling_avg = deque(maxlen=100)
-        for episode in range(N):
+        for episode in tqdm(range(N)):
             reward = self.train_iteration(problem_generator_seed=episode)
             rolling_avg.append(reward)
             if episode % 100 == 0:

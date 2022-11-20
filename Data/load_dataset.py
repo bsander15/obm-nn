@@ -123,6 +123,8 @@ class OLBMInstance:
         reward = 0
         if task >= len(self.tasks):
             return reward  # We are choosing to skip this worker in this case
+        if task in self.matchings:
+            return reward  # We cannot match a worker to a task that has already been matched
         if self.costs[worker][task] > 0:  # Need to check if an edge exists, otherwise we can't perform a match
             self.matchings[task] = worker
             self.matched_bitmap[task] = 0

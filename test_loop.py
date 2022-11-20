@@ -4,8 +4,9 @@ from Data.load_dataset import GMission
 from Agents.Greedy import Greedy
 from Agents.FFNet import LinearFFNet, OLBMReinforceTrainer
 import torch
+from tqdm import tqdm
 
-NUM_TRAINING_ITERATIONS = 50000
+NUM_TRAINING_ITERATIONS = 20000
 NUM_TESTS_TO_RUN = 5000
 NUM_TASKS = 10
 NUM_WORKERS = 60
@@ -38,18 +39,19 @@ def main():
 
 
     # TRAIN FFNET:
-    print("Now training LinearFFNet:")
+    print("NOW TRAINING: LinearFFNet:")
     input_vector_size = NUM_TASKS * 2  # One entry for each edge, one entry for each value in bitmap
     model = LinearFFNet(input_vector_size, NUM_TASKS)
     trainer = OLBMReinforceTrainer(model=model, num_tasks=NUM_TASKS, num_workers=NUM_WORKERS)
     trainer.train_N_iterations(NUM_TRAINING_ITERATIONS)  # This will take a while to run
 
     # TEST FFNET:
+    print("NOW TESTING LinearFFNet:")
     scores = []
     optimal_scores = []
     model.eval()
     with torch.no_grad():
-        for test in range(NUM_TESTS_TO_RUN):
+        for test in tqdm(range(NUM_TESTS_TO_RUN)):
             # Solve the problem using the greedy algorithm:
             problem_to_solve = data.generate_olbm_instance(num_tasks=NUM_TASKS,
                                                            num_workers=NUM_WORKERS,
