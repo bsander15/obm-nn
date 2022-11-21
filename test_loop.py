@@ -61,7 +61,7 @@ def main():
                 state = torch.from_numpy(state).to(DEVICE)
                 action, log_prob = model(state)
                 problem_to_solve.match(action, worker)
-                scores.append(problem_to_solve.get_matching_score())
+            scores.append(problem_to_solve.get_matching_score())
 
             # Find optimal solution to the problem:
             row_ind, col_ind = linear_sum_assignment(problem_to_solve.get_all_edges(), maximize=True)
