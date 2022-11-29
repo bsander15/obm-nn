@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from Data.load_dataset import GMission, OLBMInstance
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Automatically set the device for computation
+DEVICE = "cpu"  # Automatically set the device for computation
 
 
 class LinearFFNet(nn.Module):
