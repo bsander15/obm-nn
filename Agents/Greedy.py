@@ -29,7 +29,10 @@ class Greedy:
         if matchable_edges.any():
             best_task_to_match_next_worker_to = np.argmax(matchable_edges)
             self.olbm_problem.match(best_task_to_match_next_worker_to, next_worker)
+            return best_task_to_match_next_worker_to, next_worker
+        return 10, next_worker
 
-    def solve_olbm(self):
-        while self.olbm_problem.has_unseen_workers():
-            self.match()
+    # def solve_olbm(self):
+    #     while self.olbm_problem.has_unseen_workers():
+    #         task, worker  = self.match()
+    #         return task, worker

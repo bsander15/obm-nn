@@ -5,8 +5,9 @@ from Agents.Greedy import Greedy
 from Agents.FFNet import LinearFFNet, OLBMReinforceTrainer
 import torch
 from tqdm import tqdm
+from analysis import Analysis
 
-NUM_TRAINING_ITERATIONS = 240000
+NUM_TRAINING_ITERATIONS = 35
 NUM_TESTS_TO_RUN = 5000
 NUM_TASKS = 10
 NUM_WORKERS = 60
@@ -17,13 +18,15 @@ def main():
     data = GMission()
     scores = []
     optimal_scores = []
-
+    analysis = Analysis(NUM_WORKERS, NUM_TESTS_TO_RUN)
     # TEST FOR GREEDY ALGORITHM:
     for test in range(NUM_TESTS_TO_RUN):
         # Solve the problem using the greedy algorithm:
         problem_to_solve = data.generate_olbm_instance(num_tasks=NUM_TASKS, num_workers=NUM_WORKERS, random_seed=test)
         greedy_agent = Greedy(problem_to_solve)
-        greedy_agent.solve_olbm()
+        while problem_to_solve.has_unseen_workers():
+            task, worker = greedy_agent.match()
+            analysis.store_agreement_data(worker, task, problem_to_solve)
         scores.append(problem_to_solve.get_matching_score())
 
         # Find optimal solution to the problem:
@@ -32,6 +35,7 @@ def main():
         for i, j in zip(row_ind, col_ind):
             optimal_score += problem_to_solve.get_all_edges()[i, j]
         optimal_scores.append(optimal_score)
+    analysis.agreement_by_t()
 
     print(f"Greedy agent mean score: {np.mean(scores)} over {NUM_TESTS_TO_RUN} trials")
     print(f"Mean optimal score: {np.mean(optimal_scores)} over {NUM_TESTS_TO_RUN} trials")
@@ -47,6 +51,7 @@ def main():
 
     # TEST FFNET:
     print("NOW TESTING LinearFFNet:")
+    analysis = Analysis(NUM_WORKERS, NUM_TESTS_TO_RUN)
     scores = []
     optimal_scores = []
     model.eval()
@@ -60,6 +65,7 @@ def main():
                 worker, state = problem_to_solve.get_next_nn_input()
                 state = torch.from_numpy(state).to(DEVICE)
                 action, log_prob = model(state)
+                analysis.store_agreement_data(worker, action, problem_to_solve)
                 problem_to_solve.match(action, worker)
             scores.append(problem_to_solve.get_matching_score())
 
@@ -69,6 +75,7 @@ def main():
             for i, j in zip(row_ind, col_ind):
                 optimal_score += problem_to_solve.get_all_edges()[i, j]
             optimal_scores.append(optimal_score)
+        analysis.agreement_by_t()
 
         print(f"FFNet agent mean score: {np.mean(scores)} over {NUM_TESTS_TO_RUN} trials")
         print(f"Mean optimal score: {np.mean(optimal_scores)} over {NUM_TESTS_TO_RUN} trials")
