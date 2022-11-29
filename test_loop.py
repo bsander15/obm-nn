@@ -6,11 +6,11 @@ from Agents.FFNet import LinearFFNet, OLBMReinforceTrainer
 import torch
 from tqdm import tqdm
 
-NUM_TRAINING_ITERATIONS = 240000
+NUM_TRAINING_ITERATIONS = 1000000
 NUM_TESTS_TO_RUN = 5000
 NUM_TASKS = 10
 NUM_WORKERS = 60
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Automatically set the device for computation
+DEVICE = "cpu"  # Automatically set the device for computation
 
 def main():
     # Load up the GMission Dataset:
