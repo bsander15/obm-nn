@@ -91,7 +91,7 @@ class OLBMReinforceTrainer:
             worker, state = problem.get_next_nn_input()  # Pick the next worker to match and get the input as a vector
             state = torch.from_numpy(state).to(DEVICE)  # Need to convert the datatype to a tensor for pytorch
             action, log_prob = self.model(state)  # Choose an action based on the model
-            reward = problem.match(action, worker)  # Perform matching, calculate reward
+            reward = problem.match(action, worker)  # Perform matching or skip, calculate reward for action
 
             if self.reward_mode == "SARSA_REWARD":
                 rewards.append(reward)  # Keep track of the reward we got for taking the action with highest log-prob
