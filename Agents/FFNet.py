@@ -72,8 +72,8 @@ class OLBMReinforceTrainer:
         self.num_workers = num_workers  # Should refactor this to get direct from self.model?
         self.reward_mode = reward_mode
         self._time = str(time.time())
-        self.log_file = self._time + "_OLBM_REINFORCE_TRAINING_LOG.csv"
         self.model_name = self._time + "_" + self.model.name() + "_" + self.reward_mode
+        self.log_file = self.model_name + "_TRAINING_LOG.csv"
 
     def train_iteration(self, problem_generator_seed=1234):
         # Generate an OLBM problem:
@@ -170,7 +170,7 @@ class OLBMReinforceTrainer:
                 print(f"EPISODE {episode} - SCORE: {reward}")
                 print(f"Rolling average over last {len(rolling_avg)} episodes = {np.mean(rolling_avg)}")
                 with open(self.log_file, 'a+') as log:
-                    log.write(f"{episode}, {rolling_avg}\n")
+                    log.write(f"{episode}, {np.mean(rolling_avg)}\n")
             if episode % 10000 == 0:
                 # Save a snapshot of the model weights:
                 torch.save(self.model.state_dict(), f"./{self.model_name}.pth")
