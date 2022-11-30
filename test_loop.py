@@ -6,11 +6,11 @@ from Agents.FFNet import LinearFFNet, OLBMReinforceTrainer
 import torch
 from tqdm import tqdm
 
-NUM_TRAINING_ITERATIONS = 240000
+NUM_TRAINING_ITERATIONS = 500000
 NUM_TESTS_TO_RUN = 5000
 NUM_TASKS = 10
 NUM_WORKERS = 60
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Automatically set the device for computation
+DEVICE = "cpu"
 
 def main():
     # Load up the GMission Dataset:
@@ -42,7 +42,7 @@ def main():
     print("NOW TRAINING: LinearFFNet:")
     input_vector_size = NUM_TASKS * 2  # One entry for each edge, one entry for each value in bitmap
     model = LinearFFNet(input_vector_size, NUM_TASKS)
-    trainer = OLBMReinforceTrainer(model=model, num_tasks=NUM_TASKS, num_workers=NUM_WORKERS)
+    trainer = OLBMReinforceTrainer(model=model, num_tasks=NUM_TASKS, num_workers=NUM_WORKERS, reward_mode="FINAL_REWARD")
     trainer.train_N_iterations(NUM_TRAINING_ITERATIONS)  # This will take a while to run
 
     # TEST FFNET:
