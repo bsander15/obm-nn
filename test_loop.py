@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 from analysis import Analysis
 
-NUM_TRAINING_ITERATIONS = 35
+NUM_TRAINING_ITERATIONS = 500000
 NUM_TESTS_TO_RUN = 5000
 NUM_TASKS = 10
 NUM_WORKERS = 60

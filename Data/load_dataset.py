@@ -80,6 +80,12 @@ class OLBMInstance:
         self.matching_score = 0  # Keep track of value of current assigned matching
         self.matched_bitmap = np.ones_like(self.tasks, dtype=np.int8)  # Bitmap indicating which tasks have been
 
+    def num_tasks(self):
+        return len(self.tasks)
+
+    def num_workers(self):
+        return len(self.workers)
+
     def has_unseen_workers(self):
         return self.step < len(self.workers)
 
