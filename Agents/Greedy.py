@@ -29,7 +29,12 @@ class Greedy:
         if matchable_edges.any():
             best_task_to_match_next_worker_to = np.argmax(matchable_edges)
             self.olbm_problem.match(best_task_to_match_next_worker_to, next_worker)
+            return best_task_to_match_next_worker_to, next_worker
+        # If there aren't any unmatched tasks, we return the "skip" node index, which is always defined to be the
+        # index of the last task + 1 (which is the same as the number of tasks):
+        return self.olbm_problem.num_tasks(), next_worker
 
-    def solve_olbm(self):
-        while self.olbm_problem.has_unseen_workers():
-            self.match()
+    # def solve_olbm(self):
+    #     while self.olbm_problem.has_unseen_workers():
+    #         task, worker  = self.match()
+    #         return task, worker
