@@ -15,6 +15,8 @@ REWARD_MODES = ['SARSA_REWARD', 'TOTAL_REWARD', 'FINAL_REWARD']
 # REWARD_MODES = ['FINAL_REWARD']
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Automatically set the device for computation
 
+REWARD_MODES = ["SARSA_REWARD", "TOTAL_REWARD", "FINAL_REWARD"]
+
 def main():
 
     # TRAIN FFNET:
@@ -25,6 +27,7 @@ def main():
             print(f'NOW TRAINING: LinearFFNet_{mode}_{num_tasks}x{num_workers}:')
             trainer = OLBMReinforceTrainer(model=model, num_tasks=num_tasks, num_workers=num_workers, reward_mode=mode)
             trainer.train_N_iterations(NUM_TRAINING_ITERATIONS)  # This will take a while to run
+
 
 if __name__ == '__main__':
     main()
