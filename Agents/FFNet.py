@@ -50,8 +50,9 @@ class LinearFFNet(nn.Module):
         actions = self.ff(x.float())
         if np.isnan(actions.squeeze(0).detach().cpu().numpy()).any():
             # TODO: there is a bug where the weights go to NaN, which results in NaN ouput.
-            # Trying to decrease the learning rate...
-            print("STOP!")
+            # This occurs when gamma is too small or the LR is too large.
+            print("Decrease LR or increase Gamma!")
+            exit(-1)
         action = np.random.choice(self.action_space, p=actions.squeeze(0).detach().cpu().numpy())  # TODO: necessary?
         log_prob_action = torch.log(actions.squeeze(0))[action]
         return action, log_prob_action
