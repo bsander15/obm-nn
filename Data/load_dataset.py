@@ -79,6 +79,7 @@ class OLBMInstance:
         self.matchings = {}  # Dict to keep track of which tasks have been matched with which worker
         self.matching_score = 0  # Keep track of value of current assigned matching
         self.matched_bitmap = np.ones_like(self.tasks, dtype=np.int8)  # Bitmap indicating which tasks have been
+            
 
     def num_tasks(self):
         return len(self.tasks)
@@ -104,6 +105,20 @@ class OLBMInstance:
         worker = self.get_next_worker()
         worker_edges = self.costs[worker]
         return worker, np.concatenate((worker_edges, self.matched_bitmap))
+
+    def get_next_ff_inv_input(self):
+        """
+        Get the list containing the weight of the task from the worker, if the node is skip or not and the mean of worker edges 
+        """
+        worker = self.get_next_worker()
+        states = []
+        worker_edges = self.costs[worker]
+        for edge_weight in worker_edges:
+            if edge_weight!=0:
+                states.append([edge_weight,0,np.mean(worker_edges)])
+        states.append([0,1,np.mean(worker_edges)])
+        return worker, states
+        
 
     def get_matchings(self):
         return self.matchings

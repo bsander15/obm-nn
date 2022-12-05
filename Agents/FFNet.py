@@ -59,10 +59,60 @@ class LinearFFNet(nn.Module):
     def name(self):
         return "LINEAR_FF_NET"
 
+class InvFFNet(nn.Module):
+    def __init__(self, input_vector_size, num_tasks, hidden_size=100):
+        """
+        This is 4 Layer NN that is parameterized with different numbers of inputs (# workers + # tasks in gMission), the
+        number of outputs (# tasks + 1, where the extra output indicates that we should skip a worker) and the # of
+        nodes we should have in our hidden layers.
+        """
+        super(InvFFNet, self).__init__()
+        self.ff = nn.Sequential(
+            nn.Linear(input_vector_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, num_tasks + 1),
+            # n+1st output is a "skip node" indicating we should skip this worker
+            nn.Softmax()
+        )
+        self.action_space = np.arange(num_tasks + 1, dtype=np.int16)
+
+    def forward(self, x):
+        """
+        Takes as input an input vector describing a worker presented in an OLBM problem of form:
+
+        [w_0, ... , w_U, m_0, ..., m_U]
+
+        where w_n is the weight of the edge from worker_t to node_n and m_n is a binary mask representing whether or not
+        a worker has already been matched to the nth task.
+
+        Outputs a chosen action, e.g. a task to match the input worker to, plus the log-probability of taking that
+        action. The action is chosen by sampling from all possible actions according the the probability distribution
+        computed over all the actions by the NN - in other words, the network will *typically* take actions that are
+        predicted to be high-value, but in a somewhat stochastic manner to promote exploration of policy space.
+
+        This code was partially adapted from Noufal Samsudin's REINFORCE implementation, found at:
+        https://github.com/kvsnoufal/reinforce
+        """
+        actions = self.ff(x.float())
+        if np.isnan(actions.squeeze(0).detach().cpu().numpy()).any():
+            # TODO: there is a bug where the weights go to NaN, which results in NaN ouput.
+            # Trying to decrease the learning rate...
+            print("STOP!")
+        action = np.random.choice(self.action_space, p=actions.squeeze(0).detach().cpu().numpy())  # TODO: necessary?
+        log_prob_action = torch.log(actions.squeeze(0))[action]
+        return action, log_prob_action
+
+    def name(self):
+        return "InvFFNet"
 
 class OLBMReinforceTrainer:
-    def __init__(self, model, lr=0.0001, gamma=0.9, num_tasks=10, num_workers=30, reward_mode="SARSA_REWARD"):
+    def __init__(self, model,policy = "ff", lr=0.0001, gamma=0.9, num_tasks=10, num_workers=30, reward_mode="SARSA_REWARD"):
         self.model = model.to(DEVICE)
+        self.policy= policy
         self.lr = lr
         self.gamma = gamma
         self.optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
@@ -88,25 +138,50 @@ class OLBMReinforceTrainer:
         # that was taken, and the reward for taking that action (in this context, reward is the weight of the edge that
         # we choose to add to the network):
         while problem.has_unseen_workers():
-            worker, state = problem.get_next_nn_input()  # Pick the next worker to match and get the input as a vector
-            state = torch.from_numpy(state).to(DEVICE)  # Need to convert the datatype to a tensor for pytorch
-            action, log_prob = self.model(state)  # Choose an action based on the model
-            reward = problem.match(action, worker)  # Perform matching, calculate reward
-
-            if self.reward_mode == "SARSA_REWARD":
-                rewards.append(reward)  # Keep track of the reward we got for taking the action with highest log-prob
-            elif self.reward_mode == "TOTAL_REWARD":
-                rewards.append(problem.get_matching_score())  # Reward is sum of all weights included in matching so far
-            elif self.reward_mode == "FINAL_REWARD":
-                if problem.has_unseen_workers():
-                    rewards.append(0)  # Just give a point for continuing to play the games
+            if self.policy == "ff":
+                worker, state = problem.get_next_nn_input()  # Pick the next worker to match and get the input as a vector
+                state = torch.from_numpy(state).to(DEVICE)  # Need to convert the datatype to a tensor for pytorch
+                action, log_prob = self.model(state)  # Choose an action based on the model
+                reward = problem.match(action, worker)  # Perform matching, calculate reward
+                log_probs.append(log_prob)  # Keep track of associated model output that generated the above reward
+                if self.reward_mode == "SARSA_REWARD":
+                    rewards.append(reward)  # Keep track of the reward we got for taking the action with highest log-prob
+                elif self.reward_mode == "TOTAL_REWARD":
+                    rewards.append(problem.get_matching_score())  # Reward is sum of all weights included in matching so far
+                elif self.reward_mode == "FINAL_REWARD":
+                    if problem.has_unseen_workers():
+                        rewards.append(0)  # Just give a point for continuing to play the games
+                    else:
+                        rewards.append(problem.get_matching_score())  # All discounted rewards will be based on final score
                 else:
-                    rewards.append(problem.get_matching_score())  # All discounted rewards will be based on final score
-            else:
-                print("OLBMTRAINER ERROR: Unrecognized reward mode!")
-                exit(-1)
-            log_probs.append(log_prob)  # Keep track of associated model output that generated the above reward
+                    print("OLBMTRAINER ERROR: Unrecognized reward mode!")
+                    exit(-1)
 
+            elif self.policy == "ff-inv":  
+                worker, states = problem.get_next_ff_inv_input()  # Pick the next worker to match and get the input as a vector
+                states_log_prob = []
+                states_log_prob_tf = []
+                actions = []
+                for state in states:
+                    state = torch.from_numpy(np.array(state)).to(DEVICE)  # Need to convert the datatype to a tensor for pytorch
+                    action, log_prob = self.model(state)  # Choose an action based on the model
+                    states_log_prob.append(log_prob.detach().numpy())
+                    states_log_prob_tf.append(log_prob)
+                    actions.append(action)
+                reward = problem.match(actions[np.argmax(states_log_prob)], worker)  # Perform matching, calculate reward
+                log_probs.append(states_log_prob_tf[np.argmax(states_log_prob)])  # Keep track of associated model output that generated the above reward
+                if self.reward_mode == "SARSA_REWARD":
+                    rewards.append(reward)  # Keep track of the reward we got for taking the action with highest log-prob
+                elif self.reward_mode == "TOTAL_REWARD":
+                    rewards.append(problem.get_matching_score())  # Reward is sum of all weights included in matching so far
+                elif self.reward_mode == "FINAL_REWARD":
+                    if problem.has_unseen_workers():
+                        rewards.append(0)  # Just give a point for continuing to play the games
+                    else:
+                        rewards.append(problem.get_matching_score())  # All discounted rewards will be based on final score
+                else:
+                    print("OLBMTRAINER ERROR: Unrecognized reward mode!")
+                    exit(-1)
         # Keep track of "total reward" generated throughout the iteration for plotting later. We'll want to see these
         # numbers going up over time.
         self.all_rewards.append(np.sum(rewards))
