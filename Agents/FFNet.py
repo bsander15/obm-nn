@@ -61,7 +61,7 @@ class LinearFFNet(nn.Module):
 
 
 class OLBMReinforceTrainer:
-    def __init__(self, model, lr=0.0001, gamma=0.9, num_tasks=10, num_workers=30, reward_mode="SARSA_REWARD"):
+    def __init__(self, model, lr=0.000001, gamma=0.99, num_tasks=10, num_workers=30, reward_mode="SARSA_REWARD"):
         self.model = model.to(DEVICE)
         self.lr = lr
         self.gamma = gamma
@@ -71,8 +71,7 @@ class OLBMReinforceTrainer:
         self.num_tasks = num_tasks  # Should refactor this to get direct from self.model?
         self.num_workers = num_workers  # Should refactor this to get direct from self.model?
         self.reward_mode = reward_mode
-        self._time = str(time.time())
-        self.model_name = self._time + "_" + self.model.name() + "_" + self.reward_mode
+        self.model_name = f'{self.reward_mode}_{self.num_tasks}X{self.num_workers}'
         self.log_file = self.model_name + "_TRAINING_LOG.csv"
 
     def train_iteration(self, problem_generator_seed=1234):
@@ -99,7 +98,7 @@ class OLBMReinforceTrainer:
                 rewards.append(problem.get_matching_score())  # Reward is sum of all weights included in matching so far
             elif self.reward_mode == "FINAL_REWARD":
                 if problem.has_unseen_workers():
-                    rewards.append(0)  # Just give a point for continuing to play the games
+                    rewards.append(reward)  # Just give a point for continuing to play the games
                 else:
                     rewards.append(problem.get_matching_score())  # All discounted rewards will be based on final score
             else:
