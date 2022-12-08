@@ -50,8 +50,9 @@ class LinearFFNet(nn.Module):
         actions = self.ff(x.float())
         if np.isnan(actions.squeeze(0).detach().cpu().numpy()).any():
             # TODO: there is a bug where the weights go to NaN, which results in NaN ouput.
-            # Trying to decrease the learning rate...
-            print("STOP!")
+            # This occurs when gamma is too small or the LR is too large.
+            print("Decrease LR or increase Gamma!")
+            exit(-1)
         action = np.random.choice(self.action_space, p=actions.squeeze(0).detach().cpu().numpy())  # TODO: necessary?
         log_prob_action = torch.log(actions.squeeze(0))[action]
         return action, log_prob_action
@@ -121,8 +122,7 @@ class OLBMReinforceTrainer:
         self.num_tasks = num_tasks  # Should refactor this to get direct from self.model?
         self.num_workers = num_workers  # Should refactor this to get direct from self.model?
         self.reward_mode = reward_mode
-        self._time = str(time.time())
-        self.model_name = self._time + "_" + self.model.name() + "_" + self.reward_mode
+        self.model_name = f'{self.reward_mode}_{self.num_tasks}X{self.num_workers}'
         self.log_file = self.model_name + "_TRAINING_LOG.csv"
 
     def train_iteration(self, problem_generator_seed=1234):
