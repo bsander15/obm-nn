@@ -110,7 +110,7 @@ class InvFFNet(nn.Module):
         return "InvFFNet"
 
 class OLBMReinforceTrainer:
-    def __init__(self, model,policy = "ff", lr=0.0001, gamma=0.9, num_tasks=10, num_workers=30, reward_mode="SARSA_REWARD"):
+    def __init__(self, model,policy = "ff", lr=0.00001, gamma=0.9, num_tasks=10, num_workers=30, reward_mode="SARSA_REWARD"):
         self.model = model.to(DEVICE)
         self.policy= policy
         self.lr = lr

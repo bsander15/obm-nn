@@ -18,7 +18,7 @@ NUM_WORKERS = 30
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Automatically set the device for computation
 
 # REWARD_MODES = ["SARSA_REWARD", "TOTAL_REWARD", "FINAL_REWARD"]
-REWARD_MODES = ["SARSA_REWARD"]
+REWARD_MODES = ["FINAL_REWARD"]
 
 def main(policy="ff"):
     # Load up the GMission Dataset:
