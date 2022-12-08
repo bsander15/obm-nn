@@ -74,8 +74,8 @@ def test_InvFFNet(model, data, model_name, num_tasks, num_workers, analysis):
         for test in tqdm(range(NUM_TESTS_TO_RUN)):
             # Solve the problem using the greedy algorithm:
             print("olbm_instance",NUM_TASKS, NUM_WORKERS)
-            problem_to_solve = data.generate_olbm_instance(num_tasks=NUM_TASKS,
-                                                           num_workers=NUM_WORKERS,
+            problem_to_solve = data.generate_olbm_instance(num_tasks=num_tasks,
+                                                           num_workers=num_workers,
                                                            random_seed=test)
             while problem_to_solve.has_unseen_workers():
                 worker, states = problem_to_solve.get_next_ff_inv_input()  # Pick the next worker to match and get the input as a vector
